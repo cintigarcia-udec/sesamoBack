@@ -81,7 +81,9 @@ colorama==0.4.6 ; sys_platform == 'win32' \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
     # via click
-cryptography==47.0.0
+cryptography==47.0.0 \
+    --hash=sha256:4e1de79e047e25d6e9f8cea71c86b4a53aced64134f0f003bbcbf3655fd172c8
+    # via sesamoback
 fastapi==0.135.1 \
     --hash=sha256:46e2fc5745924b7c840f71ddd277382af29ce1cdb7d5eab5bf697e3fb9999c9e \
     --hash=sha256:d04115b508d936d254cea545b7312ecaa58a7b3a0f84952535b4c9afae7668cd
