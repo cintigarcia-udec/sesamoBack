@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Configuración de App
     debug: bool = True
     environment: str = "development"
+    init_db_on_startup: bool = False
     root_path: str = "/api"
     logging_level: Optional[str] = 'DEBUG'
     allowed_origins: str = "*" # Cambiar a una lista de URLs permitidas en producción, separadas por comas

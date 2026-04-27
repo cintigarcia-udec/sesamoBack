@@ -21,7 +21,7 @@ from app.routers import (
 )
 
 async def lifespan(app: FastAPI):
-  if settings.environment == 'development':
+  if settings.init_db_on_startup or settings.environment in {"development", "staging"}:
     initialize_database()
   yield
 
