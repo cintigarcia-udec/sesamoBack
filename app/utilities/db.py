@@ -1,10 +1,17 @@
 from sqlalchemy import create_engine, text, inspect
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.schema import CreateColumn
 
 from app.config import settings
 from app.utilities.logger import logger
 import threading
+import re
+
+_CREDENTIALS_IN_URL_PATTERN = re.compile(r"://([^:/?#]+):([^@/?#]+)@")
+
+def _redact_db_url(db_url: str) -> str:
+    return _CREDENTIALS_IN_URL_PATTERN.sub(r"://\1:***@", db_url)
 
 class Base(DeclarativeBase):
     __abstract__ = True
@@ -46,7 +53,7 @@ class DatabaseConnectionPool:
         self._sessions = {}
         for key, uri in self.databases.items():
             try:
-                logger.info(f"Key: {key}, URI: {uri}")
+                logger.info(f"Key: {key}, URI: {_redact_db_url(uri)}")
                 # pool_pre_ping es crucial en MySQL para evitar el error "MySQL server has gone away"
                 self._engines[key] = create_engine(
                     uri, 
@@ -128,10 +135,31 @@ def initialize_database():
     engine = None
     logger.info("Initializing Database")
     
-    temp_engine = create_engine(DatabaseConnectionPool.get_database_uri('sesamo'))
+    db_uri = DatabaseConnectionPool.get_database_uri('sesamo')
+    if not db_uri:
+        raise RuntimeError("Missing database uri for 'sesamo'")
+    try:
+        parsed = make_url(db_uri)
+        logger.info(
+            "DB Target: dialect=%s host=%s port=%s database=%s user=%s",
+            parsed.drivername,
+            parsed.host,
+            parsed.port,
+            parsed.database,
+            parsed.username,
+        )
+    except Exception:
+        logger.info("DB Target: %s", _redact_db_url(db_uri))
+
+    temp_engine = create_engine(db_uri)
     
     try:
         with temp_engine.connect() as connection:
+            try:
+                current_db = connection.execute(text("SELECT DATABASE()")).scalar()
+                logger.info("DB Selected: %s", current_db)
+            except Exception:
+                pass
             lock_result = connection.execute(text("SELECT GET_LOCK('db_init_lock', 10)")).scalar()
             if not lock_result:
                 logger.error("Could not acquire database lock. Another instance might be initializing.")
@@ -139,7 +167,10 @@ def initialize_database():
 
             try:
                 for key in DatabaseConnectionPool.get_databases():
-                    engine = create_engine(DatabaseConnectionPool.get_database_uri(key), pool_size=5, max_overflow=10)
+                    uri = DatabaseConnectionPool.get_database_uri(key)
+                    if not uri:
+                        raise RuntimeError(f"Missing database uri for '{key}'")
+                    engine = create_engine(uri, pool_size=5, max_overflow=10)
                     
                     Base.metadata.create_all(
                         bind=engine, 

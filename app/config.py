@@ -3,7 +3,7 @@ import os
 import re
 from pathlib import Path
 from typing import Optional
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
@@ -22,18 +22,27 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).resolve().parent
 
     # Configuración de la base de datos
-    mysql_url: str = "mysql+pymysql://user:pass@host/db"
+    mysql_url: str = Field(
+        "mysql+pymysql://user:pass@host/db",
+        validation_alias=AliasChoices("MYSQL_URL", "DATABASE_URL", "mysql_url", "database_url"),
+    )
     
     # Localización de logs
-    logs_path: str = "./project.log"
+    logs_path: str = Field("./project.log", validation_alias=AliasChoices("LOGS_PATH", "logs_path"))
 
     # Configuración de App
-    debug: bool = True
-    environment: str = "development"
-    init_db_on_startup: bool = False
-    root_path: str = "/api"
-    logging_level: Optional[str] = 'DEBUG'
-    allowed_origins: str = "*" # Cambiar a una lista de URLs permitidas en producción, separadas por comas
+    debug: bool = Field(True, validation_alias=AliasChoices("DEBUG", "debug"))
+    environment: str = Field("production", validation_alias=AliasChoices("ENVIRONMENT", "environment"))
+    init_db_on_startup: bool = Field(
+        False,
+        validation_alias=AliasChoices("INIT_DB_ON_STARTUP", "init_db_on_startup"),
+    )
+    root_path: str = Field("/api", validation_alias=AliasChoices("ROOT_PATH", "root_path"))
+    logging_level: Optional[str] = Field("DEBUG", validation_alias=AliasChoices("LOGGING_LEVEL", "logging_level"))
+    allowed_origins: str = Field(
+        "*",
+        validation_alias=AliasChoices("ALLOWED_ORIGINS", "allowed_origins"),
+    ) # Cambiar a una lista de URLs permitidas en producción, separadas por comas
 
     ENCRYPTION_KEY: bytes = base64.b64encode(b"your-new-encryption-key-00000000")
     
