@@ -1,7 +1,22 @@
 import base64
+import os
+import re
 from pathlib import Path
 from typing import Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+def _expand_env_vars(value: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1)
+        env_value = os.environ.get(key)
+        if env_value is None:
+            raise ValueError(f"Falta la variable de entorno '{key}' para construir mysql_url")
+        return env_value
+
+    return _ENV_VAR_PATTERN.sub(replace, value)
 
 class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).resolve().parent
@@ -28,5 +43,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 24 hours
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator("mysql_url", mode="before")
+    @classmethod
+    def _normalize_mysql_url(cls, value):
+        if isinstance(value, str) and "${" in value:
+            return _expand_env_vars(value)
+        return value
 
 settings = Settings()
