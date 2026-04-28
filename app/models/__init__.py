@@ -6,3 +6,4 @@ from .questionnaire import Questionnaire
 from .question import Question
 from .answer_option import AnswerOption
 from .user_response import UserResponse
+from .token_blacklist import TokenBlacklist
