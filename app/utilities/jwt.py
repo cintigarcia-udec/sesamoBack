@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
 from typing import Optional
 import jwt
 from fastapi import HTTPException, status, Depends
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.utilities.db import get_db
 from app.repositories.user_repository import UserRepository
+from app.repositories.token_blacklist_repository import TokenBlacklistRepository
 
 # OAuth2 scheme
 security = HTTPBearer()
@@ -45,15 +47,36 @@ def verify_token(token: str) -> dict:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+def get_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def exp_to_datetime(exp_value) -> Optional[datetime]:
+    if exp_value is None:
+        return None
+    if isinstance(exp_value, datetime):
+        if exp_value.tzinfo is None:
+            return exp_value.replace(tzinfo=timezone.utc)
+        return exp_value.astimezone(timezone.utc)
+    if isinstance(exp_value, (int, float)):
+        return datetime.fromtimestamp(exp_value, tz=timezone.utc)
+    return None
+
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
     """
     Dependency to get the current authenticated user from the token.
     """
     token = credentials.credentials
     payload = verify_token(token)
-    user_email: str = payload.get("sub")
+    token_hash = get_token_hash(token)
+    if TokenBlacklistRepository.is_blacklisted(db, token_hash=token_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token revocado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user_email = payload.get("sub")
     
-    if user_email is None:
+    if not isinstance(user_email, str):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No se pudieron validar las credenciales",

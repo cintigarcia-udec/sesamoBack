@@ -5,7 +5,8 @@ from app.utilities.db import get_db
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.auth import LoginRequest, Token
 from app.repositories.user_repository import UserRepository
-from app.utilities.jwt import create_access_token
+from app.utilities.jwt import create_access_token, exp_to_datetime, get_current_user, get_token_hash, security, verify_token
+from app.repositories.token_blacklist_repository import TokenBlacklistRepository
 
 router = APIRouter(
     prefix="/auth",
@@ -98,3 +99,17 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    credentials=Depends(security),
+):
+    token = credentials.credentials
+    payload = verify_token(token)
+    token_hash = get_token_hash(token)
+    expires_at = exp_to_datetime(payload.get("exp"))
+    TokenBlacklistRepository.add(db, token_hash=token_hash, user_id=getattr(user, "id", None), expires_at=expires_at)
+    return {"message": "Logout exitoso"}

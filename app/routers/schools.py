@@ -11,7 +11,6 @@ router = APIRouter(
     prefix="/schools",
     tags=["schools"],
     responses={404: {"description": "Not found"}},
-    dependencies=[Depends(get_current_admin)]
 )
 
 @router.get("/", response_model=List[SchoolResponse])
@@ -23,7 +22,11 @@ def read_schools(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
     return schools
 
 @router.post("/", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
-def create_school(school: SchoolCreate, db: Session = Depends(get_db)):
+def create_school(
+    school: SchoolCreate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_admin),
+):
     """
     Create a new school.
     """
@@ -42,7 +45,11 @@ def create_school(school: SchoolCreate, db: Session = Depends(get_db)):
         )
 
 @router.get("/{school_id}", response_model=SchoolResponse)
-def read_school(school_id: int, db: Session = Depends(get_db)):
+def read_school(
+    school_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_admin),
+):
     """
     Get school by ID.
     """
@@ -52,7 +59,12 @@ def read_school(school_id: int, db: Session = Depends(get_db)):
     return db_school
 
 @router.patch("/{school_id}", response_model=SchoolResponse)
-def update_school(school_id: int, school: SchoolUpdate, db: Session = Depends(get_db)):
+def update_school(
+    school_id: int,
+    school: SchoolUpdate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_admin),
+):
     """
     Update a school.
     """
@@ -76,7 +88,11 @@ def update_school(school_id: int, school: SchoolUpdate, db: Session = Depends(ge
         )
 
 @router.delete("/{school_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_school(school_id: int, db: Session = Depends(get_db)):
+def delete_school(
+    school_id: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_current_admin),
+):
     """
     Delete a school.
     """
