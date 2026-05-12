@@ -80,7 +80,8 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             "name": user.name,
             "last_name": user.last_name,
             "role_id": user.role_id,
-            "school_id": user.school_id
+            "school_id": user.school_id,
+            "school_name": user.school.name if getattr(user, "school", None) else None
         }
         access_token = create_access_token(data=user_data)
         
