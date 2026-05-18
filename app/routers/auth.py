@@ -79,7 +79,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             "id": user.id,
             "name": user.name,
             "last_name": user.last_name,
-            "role_id": user.role_id,
+            "role": user.role.name if getattr(user, "role", None) else None,
             "school_id": user.school_id,
             "school_name": user.school.name if getattr(user, "school", None) else None
         }
