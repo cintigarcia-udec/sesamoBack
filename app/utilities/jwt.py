@@ -103,3 +103,14 @@ def get_current_admin(user = Depends(get_current_user)):
             detail="No tienes permisos para realizar esta acción (Solo Administradores)",
         )
     return user
+
+def get_current_admin_or_teacher(user = Depends(get_current_user)):
+    """
+    Dependency to check if the current user is an admin (role_id=1) or teacher (role_id=3).
+    """
+    if user.role_id not in (1, 3):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para realizar esta acción (Solo Administradores o Docentes)",
+        )
+    return user

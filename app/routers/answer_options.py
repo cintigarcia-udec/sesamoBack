@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from app.utilities.db import get_db
 from app.schemas.answer_option import AnswerOptionCreate, AnswerOptionUpdate, AnswerOptionResponse, AnswerOptionAdminResponse
 from app.repositories.answer_option_repository import AnswerOptionRepository
-from app.utilities.jwt import get_current_user, get_current_admin
+from app.utilities.jwt import get_current_user, get_current_admin, get_current_admin_or_teacher
 
 router = APIRouter(
     prefix="/answer-options",
@@ -23,15 +23,15 @@ def read_answer_options(skip: int = 0, limit: int = 100, db: Session = Depends(g
     # Convert SQLAlchemy objects to Pydantic models
     result = [AnswerOptionAdminResponse.model_validate(option) for option in answer_options]
     
-    # Hide is_correct for non-admins
-    if current_user.role_id != 1:
+    # Hide is_correct for non-admins and non-teachers
+    if current_user.role_id not in (1, 3):
         for option in result:
             option.is_correct = None
             
     return result
 
 @router.post("/", response_model=AnswerOptionAdminResponse, status_code=status.HTTP_201_CREATED)
-def create_answer_option(answer_option: AnswerOptionCreate, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def create_answer_option(answer_option: AnswerOptionCreate, db: Session = Depends(get_db), current_admin_or_teacher = Depends(get_current_admin_or_teacher)):
     """
     Create a new answer option.
     """
@@ -67,14 +67,14 @@ def read_answer_option(answer_option_id: int, db: Session = Depends(get_db), cur
     # Convert SQLAlchemy object to Pydantic model
     result = AnswerOptionAdminResponse.model_validate(db_answer_option)
     
-    # Hide is_correct for non-admins
-    if current_user.role_id != 1:
+    # Hide is_correct for non-admins and non-teachers
+    if current_user.role_id not in (1, 3):
         result.is_correct = None
         
     return result
 
 @router.patch("/{answer_option_id}", response_model=AnswerOptionAdminResponse)
-def update_answer_option(answer_option_id: int, answer_option: AnswerOptionUpdate, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def update_answer_option(answer_option_id: int, answer_option: AnswerOptionUpdate, db: Session = Depends(get_db), current_admin_or_teacher = Depends(get_current_admin_or_teacher)):
     """
     Update an answer option.
     """
@@ -104,7 +104,7 @@ def update_answer_option(answer_option_id: int, answer_option: AnswerOptionUpdat
         )
 
 @router.delete("/{answer_option_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_answer_option(answer_option_id: int, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def delete_answer_option(answer_option_id: int, db: Session = Depends(get_db), current_admin_or_teacher = Depends(get_current_admin_or_teacher)):
     """
     Delete an answer option.
     """
