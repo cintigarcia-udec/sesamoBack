@@ -13,6 +13,7 @@ class UserResponse(Base):
   questionnaire_id = Column("questionnaire_id", Integer, ForeignKey('questionnaires.id'))
   score = Column("score", Float)
   answers = Column("answers", Text)
+  duration_seconds = Column("duration_seconds", Integer, nullable=True)
   created_at = Column("created_at", TIMESTAMP(timezone=True), default=func.now())
   updated_at = Column("updated_at", TIMESTAMP(timezone=True), default=func.now(), onupdate=func.now())
 
@@ -26,8 +27,9 @@ class UserResponse(Base):
       "questionnaire_id": self.questionnaire_id,
       "score": self.score,
       "answers": self.answers,
-      "created_at": self.created_at.isoformat() if self.created_at else None,
-      "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+      "duration_seconds": self.duration_seconds,
+      "created_at": self.created_at.isoformat() if self.created_at is not None else None,
+      "updated_at": self.updated_at.isoformat() if self.updated_at is not None else None,
       "user": self.user.to_dict() if self.user and hasattr(self.user, "to_dict") else None,
       "questionnaire": self.questionnaire.to_dict() if self.questionnaire and hasattr(self.questionnaire, "to_dict") else None,
     }

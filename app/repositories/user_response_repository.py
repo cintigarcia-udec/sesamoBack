@@ -162,12 +162,20 @@ class UserResponseRepository:
             questionnaire_id=user_response_in.questionnaire_id,
             user_answers=user_answers
         )
+
+        duration_seconds = None
+        if getattr(user_response_in, "duration_seconds", None) is not None:
+            try:
+                duration_seconds = max(0, int(cast(int, user_response_in.duration_seconds)))
+            except (TypeError, ValueError):
+                duration_seconds = None
         
         db_user_response = UserResponse(
             user_id=user_response_in.user_id,
             questionnaire_id=user_response_in.questionnaire_id,
             score=score,
-            answers=json.dumps(user_answers)
+            answers=json.dumps(user_answers),
+            duration_seconds=duration_seconds,
         )
         db.add(db_user_response)
         db.commit()
@@ -182,6 +190,12 @@ class UserResponseRepository:
         
         update_data = user_response_in.model_dump(exclude_unset=True)
         update_data.pop("score", None)
+
+        if "duration_seconds" in update_data and update_data["duration_seconds"] is not None:
+            try:
+                update_data["duration_seconds"] = max(0, int(update_data["duration_seconds"]))
+            except (TypeError, ValueError):
+                update_data["duration_seconds"] = None
         
         if "answers" in update_data or "questionnaire_id" in update_data:
             questionnaire_id = cast(int, update_data.get("questionnaire_id", db_user_response.questionnaire_id))
