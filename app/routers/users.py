@@ -29,12 +29,12 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), _
 
 
 @router.get("/teachers", response_model=List[TeacherPublicResponse])
-def read_teachers(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def read_teachers(teacher_user_id: Optional[int] = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     school_id = None
     if getattr(current_user, "role_id", None) != 1:
         school_id = getattr(current_user, "school_id", None)
 
-    rows = UserRepository.get_teachers_public(db, school_id=school_id)
+    rows = UserRepository.get_teachers_public(db, school_id=school_id, teacher_user_id=teacher_user_id)
     return [
         {"name": name, "last_name": last_name, "school_name": school_name}
         for name, last_name, school_name in rows

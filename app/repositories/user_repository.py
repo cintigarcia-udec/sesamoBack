@@ -149,12 +149,18 @@ class UserRepository:
         return True
 
     @staticmethod
-    def get_teachers_public(db: Session, school_id: Optional[int] = None) -> List[Tuple[str, str, Optional[str]]]:
+    def get_teachers_public(
+        db: Session,
+        school_id: Optional[int] = None,
+        teacher_user_id: Optional[int] = None,
+    ) -> List[Tuple[str, str, Optional[str]]]:
         query = (
             db.query(User.name, User.last_name, School.name)
             .outerjoin(School, School.id == User.school_id)
             .filter(User.role_id == 3)
         )
+        if teacher_user_id is not None:
+            query = query.filter(User.id == teacher_user_id)
         if school_id is not None:
             query = query.filter(User.school_id == school_id)
         rows = query.order_by(User.last_name.asc(), User.name.asc()).all()
