@@ -246,13 +246,20 @@ def _seed_database(engine):
         # Seed Roles
         if session.query(Role).count() == 0:
             logger.info("Seeding Roles...")
-            roles = [
-                Role(name="Admin"),
-                Role(name="Estudiante")
-            ]
-            session.add_all(roles)
+            session.add_all(
+                [
+                    Role(id=1, name="Admin"),
+                    Role(id=2, name="Estudiante"),
+                    Role(id=3, name="Docente"),
+                ]
+            )
             session.commit()
             logger.info("Roles seeded successfully.")
+        else:
+            role_3 = session.query(Role).filter(Role.id == 3).first()
+            if role_3 is None:
+                session.add(Role(id=3, name="Docente"))
+                session.commit()
         
         # Seed Schools
         if session.query(School).count() == 0:
