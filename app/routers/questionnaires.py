@@ -28,6 +28,11 @@ def create_questionnaire(questionnaire: QuestionnaireCreate, db: Session = Depen
     """
     try:
         return QuestionnaireRepository.create(db=db, questionnaire_in=questionnaire)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except IntegrityError as e:
         db.rollback()
         error_msg = str(e.orig)
@@ -68,6 +73,11 @@ def update_questionnaire(questionnaire_id: int, questionnaire: QuestionnaireUpda
         return db_questionnaire
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except IntegrityError as e:
         db.rollback()
         error_msg = str(e.orig)
