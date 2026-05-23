@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from app.utilities.db import get_db
 from app.schemas.questionnaire import QuestionnaireCreate, QuestionnaireUpdate, QuestionnaireResponse
 from app.repositories.questionnaire_repository import QuestionnaireRepository
+from app.models.questionnaire import Questionnaire
+from app.models.user import User
 from app.utilities.jwt import get_current_user, get_current_admin
 
 router = APIRouter(
@@ -18,7 +20,20 @@ def read_questionnaires(skip: int = 0, limit: int = 100, db: Session = Depends(g
     """
     Retrieve questionnaires.
     """
-    questionnaires = QuestionnaireRepository.get_all(db, skip=skip, limit=limit)
+    if getattr(current_user, "role_id", None) == 2:
+        user_school_id = getattr(current_user, "school_id", None)
+        if user_school_id is None:
+            return []
+        questionnaires = (
+            db.query(Questionnaire)
+            .join(User, User.id == Questionnaire.teacher_id)
+            .filter(Questionnaire.teacher_id.is_not(None), User.school_id == user_school_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+    else:
+        questionnaires = QuestionnaireRepository.get_all(db, skip=skip, limit=limit)
     return questionnaires
 
 @router.post("/", response_model=QuestionnaireResponse, status_code=status.HTTP_201_CREATED)
