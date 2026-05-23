@@ -5,7 +5,7 @@ from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.utilities.db import get_db
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.user import TeacherPublicResponse, UserCreate, UserUpdate, UserResponse
 from app.models.category import Category
 from app.models.questionnaire import Questionnaire
 from app.models.user_response import UserResponse as UserResponseModel
@@ -26,6 +26,19 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), _
     """
     users = UserRepository.get_all(db, skip=skip, limit=limit)
     return users
+
+
+@router.get("/teachers", response_model=List[TeacherPublicResponse])
+def read_teachers(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    school_id = None
+    if getattr(current_user, "role_id", None) != 1:
+        school_id = getattr(current_user, "school_id", None)
+
+    rows = UserRepository.get_teachers_public(db, school_id=school_id)
+    return [
+        {"name": name, "last_name": last_name, "school_name": school_name}
+        for name, last_name, school_name in rows
+    ]
 
 @router.get("/{user_id}", response_model=UserResponse)
 def read_user(user_id: int, db: Session = Depends(get_db), _: dict = Depends(get_current_admin)):

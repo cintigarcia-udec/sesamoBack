@@ -48,3 +48,9 @@ class UserResponse(UserBase):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TeacherPublicResponse(BaseModel):
+    name: str
+    last_name: str
+    school_name: Optional[str] = None

@@ -1,5 +1,6 @@
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple, cast
 from sqlalchemy.orm import Session
+from app.models.school import School
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -146,3 +147,18 @@ class UserRepository:
         db.delete(db_user)
         db.commit()
         return True
+
+    @staticmethod
+    def get_teachers_public(db: Session, school_id: Optional[int] = None) -> List[Tuple[str, str, Optional[str]]]:
+        query = (
+            db.query(User.name, User.last_name, School.name)
+            .outerjoin(School, School.id == User.school_id)
+            .filter(User.role_id == 3)
+        )
+        if school_id is not None:
+            query = query.filter(User.school_id == school_id)
+        rows = query.order_by(User.last_name.asc(), User.name.asc()).all()
+        return [
+            (cast(str, r[0]), cast(str, r[1]), cast(Optional[str], r[2]))
+            for r in cast(List[Any], rows)
+        ]
