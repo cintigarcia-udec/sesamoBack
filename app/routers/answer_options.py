@@ -14,11 +14,14 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[AnswerOptionAdminResponse], response_model_exclude_none=True)
-def read_answer_options(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def read_answer_options(question_id: int | None = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Retrieve answer options.
     """
-    answer_options = AnswerOptionRepository.get_all(db, skip=skip, limit=limit)
+    if question_id is None:
+        answer_options = AnswerOptionRepository.get_all(db, skip=skip, limit=limit)
+    else:
+        answer_options = AnswerOptionRepository.get_all_by_question_id(db, question_id=question_id, skip=skip, limit=limit)
     
     # Convert SQLAlchemy objects to Pydantic models
     result = [AnswerOptionAdminResponse.model_validate(option) for option in answer_options]

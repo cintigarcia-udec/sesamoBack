@@ -13,6 +13,16 @@ class AnswerOptionRepository:
         return db.query(AnswerOption).offset(skip).limit(limit).all()
 
     @staticmethod
+    def get_all_by_question_id(db: Session, question_id: int, skip: int = 0, limit: int = 100) -> List[AnswerOption]:
+        return (
+            db.query(AnswerOption)
+            .filter(AnswerOption.question_id == question_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
     def get_by_id(db: Session, answer_option_id: int) -> Optional[AnswerOption]:
         return db.query(AnswerOption).filter(AnswerOption.id == answer_option_id).first()
 
