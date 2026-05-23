@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[QuestionnaireResponse])
-def read_questionnaires(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def read_questionnaires(category_id: int | None = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Retrieve questionnaires.
     """
@@ -24,24 +24,30 @@ def read_questionnaires(skip: int = 0, limit: int = 100, db: Session = Depends(g
         user_school_id = getattr(current_user, "school_id", None)
         if user_school_id is None:
             return []
-        questionnaires = (
+        query = (
             db.query(Questionnaire)
             .join(User, User.id == Questionnaire.teacher_id)
             .filter(Questionnaire.teacher_id.is_not(None), User.school_id == user_school_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        if category_id is not None:
+            query = query.filter(Questionnaire.category_id == category_id)
+        questionnaires = query.offset(skip).limit(limit).all()
     elif getattr(current_user, "role_id", None) == 3:
-        questionnaires = (
-            db.query(Questionnaire)
-            .filter(Questionnaire.teacher_id == getattr(current_user, "id", None))
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(Questionnaire).filter(Questionnaire.teacher_id == getattr(current_user, "id", None))
+        if category_id is not None:
+            query = query.filter(Questionnaire.category_id == category_id)
+        questionnaires = query.offset(skip).limit(limit).all()
     else:
-        questionnaires = QuestionnaireRepository.get_all(db, skip=skip, limit=limit)
+        if category_id is None:
+            questionnaires = QuestionnaireRepository.get_all(db, skip=skip, limit=limit)
+        else:
+            questionnaires = (
+                db.query(Questionnaire)
+                .filter(Questionnaire.category_id == category_id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
     return questionnaires
 
 @router.post("/", response_model=QuestionnaireResponse, status_code=status.HTTP_201_CREATED)
