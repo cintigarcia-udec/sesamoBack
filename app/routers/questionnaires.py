@@ -7,7 +7,7 @@ from app.schemas.questionnaire import QuestionnaireCreate, QuestionnaireUpdate, 
 from app.repositories.questionnaire_repository import QuestionnaireRepository
 from app.models.questionnaire import Questionnaire
 from app.models.user import User
-from app.utilities.jwt import get_current_user, get_current_admin
+from app.utilities.jwt import get_current_user, get_current_admin, get_current_admin_or_teacher
 
 router = APIRouter(
     prefix="/questionnaires",
@@ -32,16 +32,31 @@ def read_questionnaires(skip: int = 0, limit: int = 100, db: Session = Depends(g
             .limit(limit)
             .all()
         )
+    elif getattr(current_user, "role_id", None) == 3:
+        questionnaires = (
+            db.query(Questionnaire)
+            .filter(Questionnaire.teacher_id == getattr(current_user, "id", None))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
     else:
         questionnaires = QuestionnaireRepository.get_all(db, skip=skip, limit=limit)
     return questionnaires
 
 @router.post("/", response_model=QuestionnaireResponse, status_code=status.HTTP_201_CREATED)
-def create_questionnaire(questionnaire: QuestionnaireCreate, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def create_questionnaire(questionnaire: QuestionnaireCreate, db: Session = Depends(get_db), current_user = Depends(get_current_admin_or_teacher)):
     """
     Create a new questionnaire.
     """
     try:
+        if getattr(current_user, "role_id", None) == 3:
+            if questionnaire.teacher_id is not None and questionnaire.teacher_id != getattr(current_user, "id", None):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permisos para asignar otro docente al cuestionario",
+                )
+            questionnaire = questionnaire.model_copy(update={"teacher_id": getattr(current_user, "id", None)})
         return QuestionnaireRepository.create(db=db, questionnaire_in=questionnaire)
     except ValueError as e:
         raise HTTPException(
@@ -74,14 +89,26 @@ def read_questionnaire(questionnaire_id: int, db: Session = Depends(get_db), cur
     db_questionnaire = QuestionnaireRepository.get_by_id(db, questionnaire_id=questionnaire_id)
     if db_questionnaire is None:
         raise HTTPException(status_code=404, detail="Questionnaire not found")
+    if getattr(current_user, "role_id", None) == 3 and getattr(db_questionnaire, "teacher_id", None) != getattr(current_user, "id", None):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para ver este cuestionario")
     return db_questionnaire
 
 @router.patch("/{questionnaire_id}", response_model=QuestionnaireResponse)
-def update_questionnaire(questionnaire_id: int, questionnaire: QuestionnaireUpdate, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def update_questionnaire(questionnaire_id: int, questionnaire: QuestionnaireUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_admin_or_teacher)):
     """
     Update a questionnaire.
     """
     try:
+        if getattr(current_user, "role_id", None) == 3:
+            existing = QuestionnaireRepository.get_by_id(db, questionnaire_id=questionnaire_id)
+            if existing is None:
+                raise HTTPException(status_code=404, detail="Questionnaire not found")
+            if getattr(existing, "teacher_id", None) != getattr(current_user, "id", None):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para editar este cuestionario")
+            if questionnaire.teacher_id is not None and questionnaire.teacher_id != getattr(current_user, "id", None):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para asignar otro docente al cuestionario")
+            questionnaire = questionnaire.model_copy(update={"teacher_id": getattr(current_user, "id", None)})
+
         db_questionnaire = QuestionnaireRepository.update(db=db, questionnaire_id=questionnaire_id, questionnaire_in=questionnaire)
         if db_questionnaire is None:
             raise HTTPException(status_code=404, detail="Questionnaire not found")
@@ -112,10 +139,16 @@ def update_questionnaire(questionnaire_id: int, questionnaire: QuestionnaireUpda
         )
 
 @router.delete("/{questionnaire_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_questionnaire(questionnaire_id: int, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def delete_questionnaire(questionnaire_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_admin_or_teacher)):
     """
     Delete a questionnaire.
     """
+    if getattr(current_user, "role_id", None) == 3:
+        existing = QuestionnaireRepository.get_by_id(db, questionnaire_id=questionnaire_id)
+        if existing is None:
+            raise HTTPException(status_code=404, detail="Questionnaire not found")
+        if getattr(existing, "teacher_id", None) != getattr(current_user, "id", None):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para eliminar este cuestionario")
     success = QuestionnaireRepository.delete(db=db, questionnaire_id=questionnaire_id)
     if not success:
         raise HTTPException(status_code=404, detail="Questionnaire not found")
