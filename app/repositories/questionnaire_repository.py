@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.models.questionnaire import Questionnaire
+from app.models.user import User
 from app.schemas.questionnaire import QuestionnaireCreate, QuestionnaireUpdate
 
 class QuestionnaireRepository:
@@ -18,7 +19,20 @@ class QuestionnaireRepository:
 
     @staticmethod
     def create(db: Session, questionnaire_in: QuestionnaireCreate) -> Questionnaire:
-        db_questionnaire = Questionnaire(**questionnaire_in.model_dump())
+        payload = questionnaire_in.model_dump()
+        teacher_id = payload.get("teacher_id")
+        if teacher_id is not None:
+            teacher = db.query(User).filter(User.id == teacher_id).first()
+            if teacher is None:
+                raise ValueError("El docente asignado no existe.")
+            if getattr(teacher, "role_id", None) != 3:
+                raise ValueError("El usuario asignado no es docente (role_id=3).")
+
+        estimated_duration_minutes = payload.get("estimated_duration_minutes")
+        if estimated_duration_minutes is not None and int(estimated_duration_minutes) < 0:
+            raise ValueError("La duración estimada no puede ser negativa.")
+
+        db_questionnaire = Questionnaire(**payload)
         db.add(db_questionnaire)
         db.commit()
         db.refresh(db_questionnaire)
@@ -31,6 +45,17 @@ class QuestionnaireRepository:
             return None
         
         update_data = questionnaire_in.model_dump(exclude_unset=True)
+        if "teacher_id" in update_data and update_data["teacher_id"] is not None:
+            teacher = db.query(User).filter(User.id == update_data["teacher_id"]).first()
+            if teacher is None:
+                raise ValueError("El docente asignado no existe.")
+            if getattr(teacher, "role_id", None) != 3:
+                raise ValueError("El usuario asignado no es docente (role_id=3).")
+
+        if "estimated_duration_minutes" in update_data and update_data["estimated_duration_minutes"] is not None:
+            if int(update_data["estimated_duration_minutes"]) < 0:
+                raise ValueError("La duración estimada no puede ser negativa.")
+
         for field, value in update_data.items():
             setattr(db_questionnaire, field, value)
 
