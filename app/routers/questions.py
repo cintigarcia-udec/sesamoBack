@@ -17,7 +17,7 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[QuestionResponse])
-def read_questions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def read_questions(questionnaire_id: int | None = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Retrieve questions.
     """
@@ -25,26 +25,35 @@ def read_questions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
         user_school_id = getattr(current_user, "school_id", None)
         if user_school_id is None:
             return []
-        questions = (
+        query = (
             db.query(Question)
             .join(Questionnaire, Questionnaire.id == Question.questionnaire_id)
             .join(User, User.id == Questionnaire.teacher_id)
             .filter(Questionnaire.teacher_id.is_not(None), User.school_id == user_school_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        if questionnaire_id is not None:
+            query = query.filter(Question.questionnaire_id == questionnaire_id)
+        questions = query.offset(skip).limit(limit).all()
     elif getattr(current_user, "role_id", None) == 3:
-        questions = (
+        query = (
             db.query(Question)
             .join(Questionnaire, Questionnaire.id == Question.questionnaire_id)
             .filter(Questionnaire.teacher_id == getattr(current_user, "id", None))
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        if questionnaire_id is not None:
+            query = query.filter(Question.questionnaire_id == questionnaire_id)
+        questions = query.offset(skip).limit(limit).all()
     else:
-        questions = QuestionRepository.get_all(db, skip=skip, limit=limit)
+        if questionnaire_id is None:
+            questions = QuestionRepository.get_all(db, skip=skip, limit=limit)
+        else:
+            questions = (
+                db.query(Question)
+                .filter(Question.questionnaire_id == questionnaire_id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
     return questions
 
 @router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
