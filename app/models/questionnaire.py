@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, String, Enum
+from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, String, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -20,6 +20,7 @@ class Questionnaire(Base):
   estimated_duration_minutes = Column("estimated_duration_minutes", Integer, nullable=True)
   difficulty = Column(Enum(QuestionnaireDifficulty), nullable=True)
   teacher_id = Column("teacher_id", Integer, ForeignKey('users.id'), nullable=True)
+  is_active = Column("is_active", Boolean, default=False, nullable=False)
   created_at = Column("created_at", TIMESTAMP(timezone=True), default=func.now())
   updated_at = Column("updated_at", TIMESTAMP(timezone=True), default=func.now(), onupdate=func.now())
 
@@ -39,6 +40,7 @@ class Questionnaire(Base):
       "estimated_duration_minutes": self.estimated_duration_minutes,
       "difficulty": self.difficulty.value if self.difficulty is not None else None,
       "teacher_id": self.teacher_id,
+      "is_active": self.is_active,
       "created_at": self.created_at.isoformat() if self.created_at is not None else None,
       "updated_at": self.updated_at.isoformat() if self.updated_at is not None else None,
       "category": self.category.to_dict() if self.category and hasattr(self.category, "to_dict") else None,

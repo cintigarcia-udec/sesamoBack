@@ -1,5 +1,7 @@
 from typing import List, Optional
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+from app.models.question import Question
 from app.models.questionnaire import Questionnaire
 from app.models.user import User
 from app.schemas.questionnaire import QuestionnaireCreate, QuestionnaireUpdate
@@ -20,6 +22,9 @@ class QuestionnaireRepository:
     @staticmethod
     def create(db: Session, questionnaire_in: QuestionnaireCreate) -> Questionnaire:
         payload = questionnaire_in.model_dump()
+        if payload.get("is_active") is True:
+            raise ValueError("No se puede activar un cuestionario al crearlo. Debe tener preguntas asociadas.")
+
         teacher_id = payload.get("teacher_id")
         if teacher_id is not None:
             teacher = db.query(User).filter(User.id == teacher_id).first()
@@ -45,6 +50,15 @@ class QuestionnaireRepository:
             return None
         
         update_data = questionnaire_in.model_dump(exclude_unset=True)
+        if update_data.get("is_active") is True:
+            questions_count = (
+                db.query(func.count(Question.id))
+                .filter(Question.questionnaire_id == questionnaire_id)
+                .scalar()
+            )
+            if not questions_count:
+                raise ValueError("No se puede activar un cuestionario sin preguntas asociadas.")
+
         if "teacher_id" in update_data and update_data["teacher_id"] is not None:
             teacher = db.query(User).filter(User.id == update_data["teacher_id"]).first()
             if teacher is None:

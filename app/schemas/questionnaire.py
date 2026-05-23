@@ -10,6 +10,7 @@ class QuestionnaireBase(BaseModel):
     estimated_duration_minutes: Optional[int] = Field(None, ge=0, description="Duración estimada (minutos)")
     difficulty: Optional[QuestionnaireDifficulty] = Field(None, description="Dificultad (easy, medium, hard)")
     teacher_id: Optional[int] = Field(None, description="ID del docente asignado (role_id=3)")
+    is_active: bool = Field(False, description="Indica si el cuestionario está activo")
 
 class QuestionnaireCreate(QuestionnaireBase):
     pass
@@ -20,6 +21,7 @@ class QuestionnaireUpdate(BaseModel):
     estimated_duration_minutes: Optional[int] = Field(None, ge=0, description="Duración estimada (minutos)")
     difficulty: Optional[QuestionnaireDifficulty] = Field(None, description="Dificultad (easy, medium, hard)")
     teacher_id: Optional[int] = Field(None, description="ID del docente asignado (role_id=3)")
+    is_active: Optional[bool] = Field(None, description="Indica si el cuestionario está activo")
 
 class QuestionnaireResponse(QuestionnaireBase):
     id: int
