@@ -43,6 +43,7 @@ class UserResponse(UserBase):
     Includes ID and creation timestamp.
     """
     id: int
+    role_id: int
     normalized_email: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

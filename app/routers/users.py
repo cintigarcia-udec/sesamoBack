@@ -11,7 +11,7 @@ from app.models.questionnaire import Questionnaire
 from app.models.user_response import UserResponse as UserResponseModel
 from app.repositories.user_repository import UserRepository
 from app.repositories.user_response_repository import UserResponseRepository
-from app.utilities.jwt import get_current_admin, get_current_user
+from app.utilities.jwt import get_current_admin, get_current_user, get_current_admin_or_teacher
 
 router = APIRouter(
     prefix="/users",
@@ -20,11 +20,17 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[UserResponse])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), _: dict = Depends(get_current_admin)):
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_admin_or_teacher)):
     """
     Retrieve users.
     """
-    users = UserRepository.get_all(db, skip=skip, limit=limit)
+    if getattr(current_user, "role_id", None) == 3:
+        school_id = getattr(current_user, "school_id", None)
+        if school_id is None:
+            return []
+        users = UserRepository.get_all_by_school_id(db, school_id=school_id, skip=skip, limit=limit)
+    else:
+        users = UserRepository.get_all(db, skip=skip, limit=limit)
     return users
 
 
@@ -41,11 +47,17 @@ def read_teachers(teacher_user_id: Optional[int] = None, db: Session = Depends(g
     ]
 
 @router.get("/{user_id}", response_model=UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db), _: dict = Depends(get_current_admin)):
+def read_user(user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_admin_or_teacher)):
     """
     Get user by ID.
     """
-    db_user = UserRepository.get_by_id(db, user_id=user_id)
+    if getattr(current_user, "role_id", None) == 3:
+        school_id = getattr(current_user, "school_id", None)
+        if school_id is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        db_user = UserRepository.get_by_id_and_school_id(db, user_id=user_id, school_id=school_id)
+    else:
+        db_user = UserRepository.get_by_id(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user

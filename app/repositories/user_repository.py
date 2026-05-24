@@ -168,3 +168,17 @@ class UserRepository:
             (cast(str, r[0]), cast(str, r[1]), cast(Optional[str], r[2]))
             for r in cast(List[Any], rows)
         ]
+
+    @staticmethod
+    def get_all_by_school_id(db: Session, school_id: int, skip: int = 0, limit: int = 100) -> List[User]:
+        return (
+            db.query(User)
+            .filter(User.school_id == school_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
+    def get_by_id_and_school_id(db: Session, user_id: int, school_id: int) -> Optional[User]:
+        return db.query(User).filter(User.id == user_id, User.school_id == school_id).first()
