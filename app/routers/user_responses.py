@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.utilities.db import get_db
+from app.models.user import User
+from app.models.user_response import UserResponse as UserResponseModel
 from app.schemas.user_response import UserResponseCreate, UserResponseUpdate, UserResponseResponse
 from app.repositories.user_response_repository import UserResponseRepository
-from app.utilities.jwt import get_current_user, get_current_admin
+from app.utilities.jwt import get_current_user, get_current_admin, get_current_admin_or_teacher
 
 router = APIRouter(
     prefix="/user-responses",
@@ -14,11 +16,24 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[UserResponseResponse])
-def read_user_responses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
+def read_user_responses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_admin_or_teacher)):
     """
     Retrieve user responses.
     """
-    user_responses = UserResponseRepository.get_all(db, skip=skip, limit=limit)
+    if getattr(current_user, "role_id", None) == 3:
+        school_id = getattr(current_user, "school_id", None)
+        if school_id is None:
+            return []
+        user_responses = (
+            db.query(UserResponseModel)
+            .join(User, User.id == UserResponseModel.user_id)
+            .filter(User.school_id == school_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+    else:
+        user_responses = UserResponseRepository.get_all(db, skip=skip, limit=limit)
     return user_responses
 
 @router.post("/", response_model=UserResponseResponse, status_code=status.HTTP_201_CREATED)

@@ -28,7 +28,7 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), c
         school_id = getattr(current_user, "school_id", None)
         if school_id is None:
             return []
-        users = UserRepository.get_all_by_school_id(db, school_id=school_id, skip=skip, limit=limit)
+        users = UserRepository.get_students_by_school_id(db, school_id=school_id, skip=skip, limit=limit)
     else:
         users = UserRepository.get_all(db, skip=skip, limit=limit)
     return users
@@ -55,7 +55,7 @@ def read_user(user_id: int, db: Session = Depends(get_db), current_user=Depends(
         school_id = getattr(current_user, "school_id", None)
         if school_id is None:
             raise HTTPException(status_code=404, detail="User not found")
-        db_user = UserRepository.get_by_id_and_school_id(db, user_id=user_id, school_id=school_id)
+        db_user = UserRepository.get_student_by_id_and_school_id(db, user_id=user_id, school_id=school_id)
     else:
         db_user = UserRepository.get_by_id(db, user_id=user_id)
     if db_user is None:
