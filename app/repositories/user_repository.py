@@ -22,7 +22,13 @@ class UserRepository:
         Returns:
             List[User]: List of users.
         """
-        return db.query(User).offset(skip).limit(limit).all()
+        return (
+            db.query(User)
+            .filter(User.is_active.is_(True))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def get_by_id(db: Session, user_id: int) -> Optional[User]:
@@ -50,7 +56,7 @@ class UserRepository:
         Returns:
             Optional[User]: The user if found, else None.
         """
-        return db.query(User).filter(User.email == email).first()
+        return db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
 
     @staticmethod
     def create(db: Session, user_in: UserCreate) -> User:
@@ -149,6 +155,16 @@ class UserRepository:
         return True
 
     @staticmethod
+    def soft_delete(db: Session, user_id: int) -> bool:
+        db_user = UserRepository.get_by_id(db, user_id)
+        if not db_user:
+            return False
+        setattr(db_user, "is_active", False)
+        db.commit()
+        db.refresh(db_user)
+        return True
+
+    @staticmethod
     def get_teachers_public(
         db: Session,
         school_id: Optional[int] = None,
@@ -157,7 +173,7 @@ class UserRepository:
         query = (
             db.query(User.name, User.last_name, School.name)
             .outerjoin(School, School.id == User.school_id)
-            .filter(User.role_id == 3)
+            .filter(User.role_id == 3, User.is_active.is_(True))
         )
         if teacher_user_id is not None:
             query = query.filter(User.id == teacher_user_id)
@@ -173,7 +189,7 @@ class UserRepository:
     def get_students_by_school_id(db: Session, school_id: int, skip: int = 0, limit: int = 100) -> List[User]:
         return (
             db.query(User)
-            .filter(User.school_id == school_id, User.role_id == 2)
+            .filter(User.school_id == school_id, User.role_id == 2, User.is_active.is_(True))
             .offset(skip)
             .limit(limit)
             .all()
@@ -181,4 +197,8 @@ class UserRepository:
 
     @staticmethod
     def get_student_by_id_and_school_id(db: Session, user_id: int, school_id: int) -> Optional[User]:
-        return db.query(User).filter(User.id == user_id, User.school_id == school_id, User.role_id == 2).first()
+        return (
+            db.query(User)
+            .filter(User.id == user_id, User.school_id == school_id, User.role_id == 2, User.is_active.is_(True))
+            .first()
+        )

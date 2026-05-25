@@ -178,6 +178,7 @@ def initialize_database():
                         checkfirst=True,
                     )
                     _synchronize_tables(engine)
+                    _backfill_users_is_active(engine)
                     _seed_database(engine)
                     engine.dispose()
                     
@@ -226,6 +227,23 @@ def _synchronize_tables(engine):
             if DROP_EXTRA_COLUMNS:
                 existing_col_names = set(existing_columns.keys())
                 _drop_extra_columns(connection, table, existing_col_names - model_columns)
+
+
+def _backfill_users_is_active(engine):
+    with engine.begin() as connection:
+        try:
+            connection.execute(text("UPDATE `users` SET `is_active` = 1 WHERE `is_active` IS NULL"))
+        except Exception:
+            return
+        try:
+            connection.execute(
+                text(
+                    "ALTER TABLE `users` "
+                    "MODIFY COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1"
+                )
+            )
+        except Exception:
+            return
 
 def _seed_database(engine):
     """

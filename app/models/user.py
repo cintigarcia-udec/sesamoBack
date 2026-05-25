@@ -1,6 +1,7 @@
 import enum
 import bcrypt
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, Enum
+from typing import Optional, cast
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -28,6 +29,7 @@ class User(Base):
   password = Column("password", String(255), nullable=True)
   role_id = Column("role_id", Integer, ForeignKey('roles.id'), default=2)
   school_id = Column("school_id", Integer, ForeignKey('schools.id'))
+  is_active = Column("is_active", Boolean, default=True, nullable=False)
   created_at = Column("created_at", TIMESTAMP(timezone=True), default=func.now())
   updated_at = Column("updated_at", TIMESTAMP(timezone=True), default=func.now(), onupdate=func.now())
 
@@ -62,10 +64,10 @@ class User(Base):
     Returns:
       bool: True if the password is correct, False otherwise.
     """
-    return verify_password(password, self.password)
+    return verify_password(password, cast(str, self.password))
   
   @staticmethod
-  def validate_unique_fields(db, email: str = None, user_id: int = None):
+  def validate_unique_fields(db, email: Optional[str] = None, user_id: Optional[int] = None):
     """Valida que email sea único si no es None"""
     if email:
       query = db.query(User).filter(User.email == email)
@@ -91,8 +93,8 @@ class User(Base):
       "document_identity": self.document_identity,
       "role_id": self.role_id,
       "school_id": self.school_id,
-      "created_at": self.created_at.isoformat() if self.created_at else None,
-      "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+      "created_at": self.created_at.isoformat() if self.created_at is not None else None,
+      "updated_at": self.updated_at.isoformat() if self.updated_at is not None else None,
       "role": self.role.to_dict() if self.role and hasattr(self.role, "to_dict") else None,
       "school": self.school.to_dict() if self.school and hasattr(self.school, "to_dict") else None
     }
